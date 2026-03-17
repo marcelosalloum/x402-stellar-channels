@@ -41,25 +41,25 @@ Break-even: **3 calls** (channels win from the 3rd call onward).
   ```bash
   cargo install stellar-cli --features opt
   ```
-- Node.js 22+ and npm
+- Node.js 22+ and [pnpm](https://pnpm.io/installation)
 
 ## Quick Start
 
 ```bash
 # Install TypeScript deps
-cd demo && npm install && cd ..
+cd demo && pnpm install && cd ..
 
 # Build and deploy to testnet (creates .env.testnet)
-cd demo && npm run setup:testnet
+cd demo && pnpm run setup:testnet
 
 # Terminal 1: facilitator
-source .env.testnet && npm run facilitator
+source .env.testnet && pnpm run facilitator
 
 # Terminal 2: API server
-source .env.testnet && npm run server
+source .env.testnet && pnpm run server
 
 # Terminal 3: benchmark
-source .env.testnet && npm run benchmark
+source .env.testnet && pnpm run benchmark
 ```
 
 ## How It Works
