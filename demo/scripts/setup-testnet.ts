@@ -1,5 +1,5 @@
 import { execSync } from 'child_process';
-import { Keypair, StrKey } from '@stellar/stellar-sdk';
+import { Keypair } from '@stellar/stellar-sdk';
 import { writeFileSync } from 'fs';
 import { deployContract } from './deploy-contract.js';
 
@@ -40,11 +40,11 @@ async function main(): Promise<void> {
 
   // Build and deploy channel contract
   console.log('\nBuilding channel contract...');
-  execSync('cd contract && stellar contract build', { encoding: 'utf8', stdio: 'inherit' });
+  execSync('cd ../contract && stellar contract build', { encoding: 'utf8', stdio: 'inherit' });
 
   console.log('\nDeploying channel contract...');
   const channelContractId = deployContract(
-    'contract/target/wasm32-unknown-unknown/release/x402_channel.wasm',
+    '../contract/target/wasm32-unknown-unknown/release/x402_channel.wasm',
     facilitator.secret(),
   );
   console.log(`  Channel contract: ${channelContractId}`);
@@ -66,13 +66,12 @@ async function main(): Promise<void> {
     `BENCHMARK_CALLS=20`,
   ].join('\n');
 
-  writeFileSync('.env.testnet', env + '\n');
+  writeFileSync('../.env.testnet', env + '\n');
   console.log('\n.env.testnet written (keep this secret).\n');
   console.log('Next steps:');
-  console.log('  cd demo');
-  console.log('  npm run facilitator   # terminal 1');
-  console.log('  npm run server        # terminal 2');
-  console.log('  npm run benchmark     # terminal 3');
+  console.log('  pnpm run facilitator   # terminal 1');
+  console.log('  pnpm run server        # terminal 2');
+  console.log('  pnpm run benchmark     # terminal 3');
 }
 
 main().catch((err) => {
