@@ -14,7 +14,7 @@
 
 Implement a **unidirectional payment channel** using a Soroban smart contract. The agent deposits USDC once (open), signs off-chain auth entries per request (zero on-chain overhead), and settles once (close). N requests = 2 on-chain transactions total.
 
-The off-chain state uses Stellar's existing `SorobanAuthorizationEntry` signing mechanism — the same primitive current x402 clients already use — making the client experience backwards-compatible. The client signs an auth entry for `channel_contract.update_state()` instead of `token.transfer()`.
+The off-chain state uses Stellar's existing `SorobanAuthorizationEntry` signing mechanism — the same primitive current x402 clients already use — making the client experience backwards-compatible. The client signs an auth entry for `channel_contract.update_state()` (a sub-invocation) instead of `token.transfer()`.
 
 ---
 
@@ -64,17 +64,17 @@ x402-stellar-channels/
 
 ```rust
 pub struct Channel {
-    pub id:               BytesN<32>,
+    pub id:               BytesN<32>,   // SHA-256(agent || server || asset || nonce)
     pub agent:            Address,
     pub server:           Address,
     pub asset:            Address,       // USDC token contract
     pub deposit:          i128,
-    pub iteration:        u64,           // latest agreed iteration
+    pub iteration:        u64,           // latest agreed iteration (starts at 0)
     pub agent_balance:    i128,
     pub server_balance:   i128,
     pub status:           ChannelStatus,
     pub dispute_state:    Option<ChannelState>,
-    pub observation_end:  Option<u32>,   // ledger sequence when dispute window closes
+    pub observation_end:  Option<u32>,   // ledger sequence; dispute window closes *after* this ledger
 }
 
 pub enum ChannelStatus { Open, Closing, Closed }
@@ -87,26 +87,45 @@ pub struct ChannelState {               // the off-chain signed payload
 }
 ```
 
+**Channel ID derivation:** `channel_id = SHA-256(agent_address || server_address || asset_address || nonce)` where `nonce` is a random 32-byte value supplied by the agent at open time. This allows multiple concurrent channels between the same agent/server pair (different assets, or multiple sessions). The contract stores channels keyed by `channel_id`.
+
+### `update_state` — internal sub-invocation target
+
+`update_state(channel_id, iteration, agent_balance, server_balance)` is an **internal contract function** that validates a state transition and requires agent authorization via `require_auth()`. It is never called directly by external transactions — it is invoked as a sub-invocation from `close_channel`, `initiate_dispute`, and `resolve_dispute`. The agent signs a `SorobanAuthorizationEntry` that authorizes this sub-invocation; the outer function provides the calling context.
+
+Validation inside `update_state`:
+- `iteration > channel.iteration`
+- `agent_balance + server_balance == channel.deposit`
+- `agent_balance >= 0` and `server_balance >= 0`
+
 ### Contract functions
 
 | Function | Caller | Behavior |
 |---|---|---|
-| `open_channel(server, asset, deposit)` | Agent | Transfers `deposit` from agent into contract escrow; returns `channel_id` |
-| `close_channel(channel_id, state, agent_auth, server_auth)` | Either | Both auth entries present → immediate settlement; pays out `agent_balance` and `server_balance` |
-| `initiate_dispute(channel_id, state, auth)` | Either | Stores state, sets `observation_end = current_ledger + OBSERVATION_WINDOW` (~500 ledgers ≈ 42 min), status → `Closing` |
-| `resolve_dispute(channel_id, state, agent_auth, server_auth)` | Either | Before `observation_end` only; accepted only if `state.iteration > dispute_state.iteration` |
-| `finalize_dispute(channel_id)` | Anyone | After `observation_end`; settles using the highest-iteration accepted state |
+| `open_channel(server, asset, deposit, nonce)` | Agent | Transfers `deposit` from agent into contract escrow; derives and returns `channel_id`; status → `Open` |
+| `close_channel(channel_id, state, agent_auth, server_auth)` | Either | Calls `update_state` with both auth entries present → immediate settlement; pays out `agent_balance` to agent, `server_balance` to server; status → `Closed` |
+| `initiate_dispute(channel_id, state, initiator_auth)` | Either | Calls `update_state` requiring only the initiator's auth entry; stores `dispute_state`, sets `observation_end = current_ledger + OBSERVATION_WINDOW`; status → `Closing` |
+| `resolve_dispute(channel_id, state, agent_auth, server_auth)` | Either | Before `observation_end` only; calls `update_state` requiring both auth entries; accepted only if `state.iteration > dispute_state.iteration`; resets `observation_end = current_ledger + OBSERVATION_WINDOW` |
+| `finalize_dispute(channel_id)` | Anyone | Only when `current_ledger > observation_end` (exclusive boundary); settles using the stored `dispute_state`; status → `Closed` |
+| `keep_alive(channel_id)` | Anyone | Extends Soroban contract storage TTL for the channel entry; should be called by the SDK on every payment request to prevent state expiry during long-running channels |
 
-### Off-chain auth entry (per request)
+**Dispute model:** `initiate_dispute` requires only the initiator's auth entry because they are asserting their own last-known state. `resolve_dispute` requires both parties' auth entries because it is asserting a mutually-agreed state, which by definition both parties have signed. The observation window resets on each successful `resolve_dispute` call; this is bounded by the number of valid state transitions (not an unbounded griefing vector), since each resolution must present a higher iteration.
 
-The client signs a `SorobanAuthorizationEntry` targeting:
+**`finalize_dispute` access:** Intentionally permissionless — anyone can call it after the window expires. `observation_end` is an exclusive boundary (`current_ledger > observation_end`), ensuring a `resolve_dispute` and `finalize_dispute` in the same ledger always resolves in favor of the resolution.
+
+### Off-chain auth entries (per request)
+
+**Agent auth entry:** The client signs a `SorobanAuthorizationEntry` targeting the `update_state` sub-invocation:
 ```
 channel_contract.update_state(channel_id, iteration, agent_balance, server_balance)
 ```
-
-- `signature_expiration_ledger` is set to a far-future ledger (channel lifetime), not the 1–2 ledger window used for immediate transactions
+- `signature_expiration_ledger` is set to a far-future ledger (channel lifetime)
 - The SDK sets this automatically when constructing channel auth entries
-- The contract enforces `iteration > stored_iteration` — older entries cannot be submitted
+- The signed payload commits to exact values of `channel_id`, `iteration`, `agent_balance`, `server_balance`
+
+**Server counter-auth entry:** After verifying the agent's auth entry, the server signs its own `SorobanAuthorizationEntry` for the same `update_state(channel_id, iteration, agent_balance, server_balance)` sub-invocation. This is returned in the payment response header.
+
+Both parties accumulate each other's latest auth entries. Either can submit `close_channel` or `initiate_dispute` using the state they hold.
 
 ---
 
@@ -157,10 +176,14 @@ channel_contract.update_state(channel_id, iteration, agent_balance, server_balan
 2. Check iteration > channel.lastIteration
 3. Check agentBalance + serverBalance == channel.deposit
 4. Check serverBalance - channel.lastServerBalance == price
-5. Verify authEntry signature against agent's public key
-→ All pass: serve response, update stored state
+5. Decode authEntry XDR; verify the sub-invocation args match
+   {channel_id, iteration, agent_balance, server_balance} exactly
+6. Verify authEntry ed25519 signature against agent's public key
+→ All pass: serve response, update stored state, call keep_alive(channelId) async
 → Any fail: 402
 ```
+
+Step 5 prevents a replayed auth entry from a different channel or iteration passing steps 1–4 while its embedded payload mismatches.
 
 ### Payment response header (server → client)
 
@@ -169,17 +192,17 @@ channel_contract.update_state(channel_id, iteration, agent_balance, server_balan
   "scheme": "channel",
   "channelId": "abc123...",
   "iteration": 42,
-  "serverAuthEntry": "<XDR SorobanAuthorizationEntry — server's counter-auth>"
+  "serverAuthEntry": "<XDR SorobanAuthorizationEntry — server's auth for update_state(...)>"
 }
 ```
 
-Both parties hold the latest mutually-signed state. Either can submit it on-chain for coordinated close or dispute.
+Both parties now hold mutually-signed auth entries for iteration N. Either can submit `close_channel(channelId, state, agentAuth, serverAuth)` on-chain.
 
 ---
 
 ## Benchmark
 
-Runs both modes against the same Stellar testnet, same server, N requests.
+Runs both modes against the same Stellar testnet, same server, N requests (configurable via `BENCHMARK_CALLS` env var, default 20).
 
 ### Expected output
 
@@ -229,13 +252,15 @@ Runs both modes against the same Stellar testnet, same server, N requests.
 
 ## Security Properties
 
-**Agent protection:** deposit exposure is bounded; agent can unilaterally close and recover unspent funds if server goes offline.
+**Agent protection:** deposit exposure is bounded; agent can unilaterally initiate dispute and recover unspent funds if server goes offline.
 
-**Server protection:** server holds the latest signed auth entry at all times; can initiate dispute and claim accumulated payments if agent disappears.
+**Server protection:** server holds the latest mutually-signed auth entries; can initiate dispute and claim accumulated payments if agent disappears.
 
-**Replay protection:** contract enforces `iteration > stored_iteration`; once a higher iteration is on-chain, all lower ones are invalid.
+**Replay protection:** contract enforces `iteration > stored_iteration` inside `update_state`; once a higher iteration is on-chain, all lower ones are permanently invalid.
 
-**Dispute protection:** observation window (~42 min default) gives the other party time to submit a higher-iteration state before funds are finalized.
+**Dispute protection:** observation window (~42 min at default 500 ledgers) gives the other party time to submit a higher-iteration state before funds are finalized. Window resets on each valid resolution.
+
+**Storage liveness:** Soroban contract storage has ledger-based TTL. The `keep_alive` function extends the TTL on every payment request, preventing channel state from expiring during long-running sessions. The SDK calls `keep_alive` asynchronously (fire-and-forget) after each successful request; a single failed call is acceptable because the next successful request will extend the TTL. The SDK should warn (not error) if `keep_alive` fails on consecutive requests.
 
 ---
 
@@ -245,6 +270,7 @@ Runs both modes against the same Stellar testnet, same server, N requests.
 - Not bidirectional (agent → server only; server never pays agent)
 - Not suitable for one-off API calls (break-even at ~3 calls; use `exact` for fewer)
 - Not a replacement for improving Stellar's base throughput
+- Not privacy-preserving: final on-chain settlement reveals total payment flow (agent and server balances) for the entire channel lifetime to all observers
 
 ---
 
