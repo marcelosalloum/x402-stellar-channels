@@ -21,6 +21,10 @@ rand = "0.8"
 name = "channel_lifecycle"
 required-features = ["testutils"]
 
+[[test]]
+name = "dispute_flow"
+required-features = ["testutils"]
+
 [profile.release]
 opt-level = "z"
 overflow-checks = true
