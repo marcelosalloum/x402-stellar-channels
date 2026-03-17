@@ -46,20 +46,19 @@ Break-even: **3 calls** (channels win from the 3rd call onward).
 ## Quick Start
 
 ```bash
-# Install TypeScript deps
-cd demo && pnpm install && cd ..
-
-# Build and deploy to testnet (creates .env.testnet)
-cd demo && pnpm run setup:testnet
+# Install TypeScript deps and deploy to testnet (creates .env.testnet)
+cd demo
+pnpm install
+pnpm run setup:testnet
 
 # Terminal 1: facilitator
-source .env.testnet && pnpm run facilitator
+pnpm run facilitator
 
 # Terminal 2: API server
-source .env.testnet && pnpm run server
+pnpm run server
 
 # Terminal 3: benchmark
-source .env.testnet && pnpm run benchmark
+pnpm run benchmark
 ```
 
 ## How It Works

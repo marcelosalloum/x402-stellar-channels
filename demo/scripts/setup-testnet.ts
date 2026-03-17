@@ -28,14 +28,13 @@ async function main(): Promise<void> {
   ]);
   console.log('  All accounts funded.');
 
-  // Deploy native XLM as a Soroban token (SAC)
-  console.log('\nDeploying native XLM token contract (SAC)...');
-  const tokenOutput = execSync(
-    `stellar contract asset deploy --asset native --source ${facilitator.secret()} --network testnet`,
+  // Get the native XLM SAC contract ID (already deployed network-wide — singleton)
+  console.log('\nFetching native XLM token contract ID (SAC)...');
+  const tokenContractId = execSync(
+    'stellar contract id asset --asset native --network testnet',
     { encoding: 'utf8' },
   ).trim();
-  const tokenContractId = tokenOutput.split('\n').find((l) => l.startsWith('C'));
-  if (!tokenContractId) throw new Error(`Could not parse token contract ID:\n${tokenOutput}`);
+  if (!tokenContractId.startsWith('C')) throw new Error(`Unexpected token contract ID: ${tokenContractId}`);
   console.log(`  Token contract: ${tokenContractId}`);
 
   // Build and deploy channel contract
@@ -44,7 +43,7 @@ async function main(): Promise<void> {
 
   console.log('\nDeploying channel contract...');
   const channelContractId = deployContract(
-    '../contract/target/wasm32-unknown-unknown/release/x402_channel.wasm',
+    '../contract/target/wasm32v1-none/release/x402_channel.wasm',
     facilitator.secret(),
   );
   console.log(`  Channel contract: ${channelContractId}`);

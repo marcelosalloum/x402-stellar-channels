@@ -7,7 +7,7 @@ export function deployContract(
   network = 'testnet',
 ): string {
   if (!existsSync(wasmPath)) {
-    throw new Error(`WASM not found at ${wasmPath}. Run: cd contract && stellar contract build`);
+    throw new Error(`WASM not found at ${wasmPath}. Run: cd ../contract && stellar contract build`);
   }
   const output = execSync(
     `stellar contract deploy --wasm ${wasmPath} --source ${sourceSecret} --network ${network}`,
