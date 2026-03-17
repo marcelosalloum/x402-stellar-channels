@@ -1,0 +1,55 @@
+import { describe, it, expect } from 'vitest';
+import { Keypair } from '@stellar/stellar-sdk';
+import { signState, verifyState, stateMessage } from '../src/crypto.js';
+
+describe('stateMessage', () => {
+  it('produces 72-byte output', () => {
+    const channelId = Buffer.alloc(32, 0x01);
+    const msg = stateMessage(channelId, 42n, 990000n, 10000n);
+    expect(msg.length).toBe(72);
+  });
+
+  it('encodes channel_id in first 32 bytes', () => {
+    const channelId = Buffer.alloc(32, 0xab);
+    const msg = stateMessage(channelId, 1n, 990000n, 10000n);
+    expect(msg.slice(0, 32)).toEqual(channelId);
+  });
+
+  it('different iteration → different message', () => {
+    const channelId = Buffer.alloc(32, 0x01);
+    const m1 = stateMessage(channelId, 1n, 990000n, 10000n);
+    const m2 = stateMessage(channelId, 2n, 980000n, 20000n);
+    expect(m1.equals(m2)).toBe(false);
+  });
+});
+
+describe('signState / verifyState', () => {
+  it('round-trip: sign then verify succeeds', () => {
+    const kp = Keypair.random();
+    const channelId = Buffer.alloc(32, 0xab);
+    const sig = signState(kp, channelId, 5n, 950000n, 50000n);
+    expect(sig.length).toBe(64);
+    expect(() =>
+      verifyState(kp.publicKey(), sig, channelId, 5n, 950000n, 50000n)
+    ).not.toThrow();
+  });
+
+  it('wrong public key throws', () => {
+    const kp = Keypair.random();
+    const other = Keypair.random();
+    const channelId = Buffer.alloc(32, 0x01);
+    const sig = signState(kp, channelId, 1n, 990000n, 10000n);
+    expect(() =>
+      verifyState(other.publicKey(), sig, channelId, 1n, 990000n, 10000n)
+    ).toThrow();
+  });
+
+  it('tampered balance throws', () => {
+    const kp = Keypair.random();
+    const channelId = Buffer.alloc(32, 0x01);
+    const sig = signState(kp, channelId, 1n, 990000n, 10000n);
+    expect(() =>
+      verifyState(kp.publicKey(), sig, channelId, 1n, 980000n, 20000n)
+    ).toThrow();
+  });
+});
