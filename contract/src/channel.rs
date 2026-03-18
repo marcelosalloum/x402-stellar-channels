@@ -13,6 +13,7 @@ pub fn channel_id_from(env: &Env, agent_pubkey: &BytesN<32>, nonce: &BytesN<32>)
     env.crypto().sha256(&preimage).into()
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn open_channel(
     env: &Env,
     agent: Address,
@@ -63,27 +64,23 @@ pub fn close_channel(
         .storage()
         .persistent()
         .get(&channel_id)
-        .unwrap_or_else(|| panic!("not found: {}", ERR_NOT_FOUND));
+        .unwrap_or_else(|| panic!("not found: {ERR_NOT_FOUND}"));
 
     assert!(
         matches!(channel.status, ChannelStatus::Open),
-        "not open: {}",
-        ERR_NOT_OPEN
+        "not open: {ERR_NOT_OPEN}"
     );
     assert!(
         state.iteration >= channel.iteration,
-        "bad iteration: {}",
-        ERR_BAD_ITERATION
+        "bad iteration: {ERR_BAD_ITERATION}"
     );
     assert!(
         state.agent_balance + state.server_balance == channel.deposit,
-        "bad balances: {}",
-        ERR_BAD_BALANCES
+        "bad balances: {ERR_BAD_BALANCES}"
     );
     assert!(
         state.agent_balance >= 0 && state.server_balance >= 0,
-        "negative: {}",
-        ERR_BAD_BALANCES
+        "negative: {ERR_BAD_BALANCES}"
     );
 
     crate::crypto::verify_state_sig(
@@ -113,8 +110,7 @@ pub fn close_channel(
 pub fn keep_alive(env: &Env, channel_id: BytesN<32>) {
     assert!(
         env.storage().persistent().has(&channel_id),
-        "not found: {}",
-        ERR_NOT_FOUND
+        "not found: {ERR_NOT_FOUND}"
     );
     env.storage()
         .persistent()

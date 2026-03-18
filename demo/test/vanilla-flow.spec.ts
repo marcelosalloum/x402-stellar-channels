@@ -12,7 +12,7 @@ describe.skipIf(SKIP)('Vanilla x402 E2E (testnet)', () => {
       process.env.TOKEN_CONTRACT_ID!,
     );
     for (let i = 0; i < 2; i++) {
-      const result = await client.get('/data') as { result: string };
+      const result = (await client.get('/data')) as { result: string };
       expect(result).toHaveProperty('result');
     }
   }, 120_000);

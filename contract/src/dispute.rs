@@ -3,7 +3,7 @@ use soroban_sdk::{BytesN, Env};
 
 /// Storage key for the DisputeState associated with a channel.
 /// Uses a tuple to distinguish from the Channel key (which uses channel_id directly).
-fn dispute_key(env: &Env, channel_id: &BytesN<32>) -> (BytesN<32>, u32) {
+fn dispute_key(channel_id: &BytesN<32>) -> (BytesN<32>, u32) {
     (channel_id.clone(), 0u32)
 }
 
@@ -18,27 +18,23 @@ pub fn initiate_dispute(
         .storage()
         .persistent()
         .get(&channel_id)
-        .unwrap_or_else(|| panic!("not found: {}", ERR_NOT_FOUND));
+        .unwrap_or_else(|| panic!("not found: {ERR_NOT_FOUND}"));
 
     assert!(
         matches!(channel.status, ChannelStatus::Open),
-        "not open: {}",
-        ERR_NOT_OPEN
+        "not open: {ERR_NOT_OPEN}"
     );
     assert!(
         state.iteration >= channel.iteration,
-        "bad iteration: {}",
-        ERR_BAD_ITERATION
+        "bad iteration: {ERR_BAD_ITERATION}"
     );
     assert!(
         state.agent_balance + state.server_balance == channel.deposit,
-        "bad balances: {}",
-        ERR_BAD_BALANCES
+        "bad balances: {ERR_BAD_BALANCES}"
     );
     assert!(
         state.agent_balance >= 0 && state.server_balance >= 0,
-        "negative: {}",
-        ERR_BAD_BALANCES
+        "negative: {ERR_BAD_BALANCES}"
     );
 
     if is_agent {
@@ -76,7 +72,7 @@ pub fn initiate_dispute(
     channel.status = ChannelStatus::Closing;
     channel.observation_end = Some(observation_end);
 
-    let dkey = dispute_key(env, &channel_id);
+    let dkey = dispute_key(&channel_id);
     env.storage().persistent().set(&dkey, &dispute_state);
     env.storage()
         .persistent()
@@ -99,46 +95,41 @@ pub fn resolve_dispute(
         .storage()
         .persistent()
         .get(&channel_id)
-        .unwrap_or_else(|| panic!("not found: {}", ERR_NOT_FOUND));
+        .unwrap_or_else(|| panic!("not found: {ERR_NOT_FOUND}"));
 
     assert!(
         matches!(channel.status, ChannelStatus::Closing),
-        "not closing: {}",
-        ERR_NOT_CLOSING
+        "not closing: {ERR_NOT_CLOSING}"
     );
 
     let observation_end = channel
         .observation_end
-        .unwrap_or_else(|| panic!("not found: {}", ERR_NOT_FOUND));
+        .unwrap_or_else(|| panic!("not found: {ERR_NOT_FOUND}"));
 
     let current_ledger = env.ledger().sequence();
     assert!(
         current_ledger <= observation_end,
-        "window expired: {}",
-        ERR_WINDOW_EXPIRED
+        "window expired: {ERR_WINDOW_EXPIRED}"
     );
 
-    let dkey = dispute_key(env, &channel_id);
+    let dkey = dispute_key(&channel_id);
     let dispute_state: DisputeState = env
         .storage()
         .persistent()
         .get(&dkey)
-        .unwrap_or_else(|| panic!("not found: {}", ERR_NOT_FOUND));
+        .unwrap_or_else(|| panic!("not found: {ERR_NOT_FOUND}"));
 
     assert!(
         state.iteration > dispute_state.iteration,
-        "bad iteration: {}",
-        ERR_BAD_ITERATION
+        "bad iteration: {ERR_BAD_ITERATION}"
     );
     assert!(
         state.agent_balance + state.server_balance == channel.deposit,
-        "bad balances: {}",
-        ERR_BAD_BALANCES
+        "bad balances: {ERR_BAD_BALANCES}"
     );
     assert!(
         state.agent_balance >= 0 && state.server_balance >= 0,
-        "negative: {}",
-        ERR_BAD_BALANCES
+        "negative: {ERR_BAD_BALANCES}"
     );
 
     crate::crypto::verify_state_sig(
@@ -187,31 +178,29 @@ pub fn finalize_dispute(env: &Env, channel_id: BytesN<32>) {
         .storage()
         .persistent()
         .get(&channel_id)
-        .unwrap_or_else(|| panic!("not found: {}", ERR_NOT_FOUND));
+        .unwrap_or_else(|| panic!("not found: {ERR_NOT_FOUND}"));
 
     assert!(
         matches!(channel.status, ChannelStatus::Closing),
-        "not closing: {}",
-        ERR_NOT_CLOSING
+        "not closing: {ERR_NOT_CLOSING}"
     );
 
     let observation_end = channel
         .observation_end
-        .unwrap_or_else(|| panic!("not found: {}", ERR_NOT_FOUND));
+        .unwrap_or_else(|| panic!("not found: {ERR_NOT_FOUND}"));
 
     let current_ledger = env.ledger().sequence();
     assert!(
         current_ledger > observation_end,
-        "window active: {}",
-        ERR_WINDOW_ACTIVE
+        "window active: {ERR_WINDOW_ACTIVE}"
     );
 
-    let dkey = dispute_key(env, &channel_id);
+    let dkey = dispute_key(&channel_id);
     let dispute_state: DisputeState = env
         .storage()
         .persistent()
         .get(&dkey)
-        .unwrap_or_else(|| panic!("not found: {}", ERR_NOT_FOUND));
+        .unwrap_or_else(|| panic!("not found: {ERR_NOT_FOUND}"));
 
     crate::channel::payout(
         env,

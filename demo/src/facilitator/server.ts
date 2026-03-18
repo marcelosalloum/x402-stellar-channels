@@ -1,7 +1,6 @@
 import express from 'express';
 import { Keypair } from '@stellar/stellar-sdk';
 import { openChannelOnChain, closeChannelOnChain } from './stellar.js';
-import type { ChannelState } from '../types.js';
 
 const app = express();
 app.use(express.json());

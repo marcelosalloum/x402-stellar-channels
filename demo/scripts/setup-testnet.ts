@@ -30,11 +30,11 @@ async function main(): Promise<void> {
 
   // Get the native XLM SAC contract ID (already deployed network-wide — singleton)
   console.log('\nFetching native XLM token contract ID (SAC)...');
-  const tokenContractId = execSync(
-    'stellar contract id asset --asset native --network testnet',
-    { encoding: 'utf8' },
-  ).trim();
-  if (!tokenContractId.startsWith('C')) throw new Error(`Unexpected token contract ID: ${tokenContractId}`);
+  const tokenContractId = execSync('stellar contract id asset --asset native --network testnet', {
+    encoding: 'utf8',
+  }).trim();
+  if (!tokenContractId.startsWith('C'))
+    throw new Error(`Unexpected token contract ID: ${tokenContractId}`);
   console.log(`  Token contract: ${tokenContractId}`);
 
   // Build and deploy channel contract

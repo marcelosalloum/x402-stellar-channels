@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  demo:
+    name: TypeScript — lint · fmt · typecheck · test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: demo
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: demo/pnpm-lock.yaml
+
+      - run: pnpm install
+
+      - run: pnpm typecheck
+
+      - run: pnpm lint
+
+      - run: pnpm fmt:check
+
+      - run: pnpm test
+
+  contract:
+    name: Rust — fmt · clippy · test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contract
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: contract
+
+      - run: cargo fmt --check
+
+      - run: cargo clippy --tests -- -D warnings
+
+      - run: cargo test --features testutils

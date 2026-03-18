@@ -20,6 +20,11 @@ export async function measure(label: string, fn: () => Promise<void>): Promise<T
     await fn();
     return { label, durationMs: Math.round(performance.now() - start), success: true };
   } catch (err) {
-    return { label, durationMs: Math.round(performance.now() - start), success: false, error: String(err) };
+    return {
+      label,
+      durationMs: Math.round(performance.now() - start),
+      success: false,
+      error: String(err),
+    };
   }
 }

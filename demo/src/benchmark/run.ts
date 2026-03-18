@@ -6,11 +6,11 @@ import type { BenchmarkResult } from './timer.js';
 const N = parseInt(process.env.BENCHMARK_CALLS ?? '20', 10);
 
 // ── ANSI helpers ──────────────────────────────────────────────────────────────
-const bold   = (s: string) => `\x1b[1m${s}\x1b[0m`;
-const dim    = (s: string) => `\x1b[2m${s}\x1b[0m`;
-const green  = (s: string) => `\x1b[32m${s}\x1b[0m`;
-const red    = (s: string) => `\x1b[31m${s}\x1b[0m`;
-const cyan   = (s: string) => `\x1b[36m${s}\x1b[0m`;
+const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
+const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
+const green = (s: string) => `\x1b[32m${s}\x1b[0m`;
+const red = (s: string) => `\x1b[31m${s}\x1b[0m`;
+const cyan = (s: string) => `\x1b[36m${s}\x1b[0m`;
 const yellow = (s: string) => `\x1b[33m${s}\x1b[0m`;
 
 function fmt(ms: number): string {
@@ -18,7 +18,9 @@ function fmt(ms: number): string {
 }
 
 // ── Table ─────────────────────────────────────────────────────────────────────
-const W0 = 20, W1 = 15, W2 = 15;
+const W0 = 20,
+  W1 = 15,
+  W2 = 15;
 // Full row width: │ sp W0 sp │ sp W1 sp │ sp W2 sp │  = W0+W1+W2+10 = 60
 
 function hline(l: string, m: string, r: string): string {
@@ -61,14 +63,14 @@ function printTable(
   console.log(hline('├', '┬', '┤'));
   trow('', 'Vanilla x402', 'Channel x402');
   console.log(hline('├', '┼', '┤'));
-  trow('Per-call avg (net)',  fmt(vanilla.perCallAvgMs), fmt(channel.perCallAvgMs), dim, cyan);
-  trow('Amortized per call',  fmt(vanilla.perCallAvgMs), fmt(amortizedMs),          dim, cyan);
-  trow(`Total (${N} calls)`,  fmt(vanilla.totalMs),      fmt(channel.totalMs),      dim, cyan);
-  trow('On-chain txs',        String(N),                 '2',                       dim, cyan);
+  trow('Per-call avg (net)', fmt(vanilla.perCallAvgMs), fmt(channel.perCallAvgMs), dim, cyan);
+  trow('Amortized per call', fmt(vanilla.perCallAvgMs), fmt(amortizedMs), dim, cyan);
+  trow(`Total (${N} calls)`, fmt(vanilla.totalMs), fmt(channel.totalMs), dim, cyan);
+  trow('On-chain txs', String(N), '2', dim, cyan);
   console.log(hline('├', '┼', '┤'));
-  trow('Net per-call speedup','',                        netSpeedupStr,             undefined, yellow);
-  trow('Amortized speedup',   '',                        `${amortizedSpeedup.toFixed(1)}×`, undefined, yellow);
-  trow('Break-even',          '',                        beStr,                     undefined, yellow);
+  trow('Net per-call speedup', '', netSpeedupStr, undefined, yellow);
+  trow('Amortized speedup', '', `${amortizedSpeedup.toFixed(1)}×`, undefined, yellow);
+  trow('Break-even', '', beStr, undefined, yellow);
   console.log(`└${'─'.repeat(W0 + 2)}┴${'─'.repeat(W1 + 2)}┴${'─'.repeat(W2 + 2)}┘`);
 }
 
@@ -91,7 +93,9 @@ async function main(): Promise<void> {
     process.stdout.write(r.success ? green('✓ ') : red('✗ '));
   });
   process.stdout.write('\n');
-  console.log(`  ${dim('avg')} ${yellow(fmt(vanilla.perCallAvgMs))}  ${dim('·')}  ${dim('total')} ${yellow(fmt(vanilla.totalMs))}`);
+  console.log(
+    `  ${dim('avg')} ${yellow(fmt(vanilla.perCallAvgMs))}  ${dim('·')}  ${dim('total')} ${yellow(fmt(vanilla.totalMs))}`,
+  );
 
   // Channel ──
   console.log(`\n  ${bold('Channel x402')}  ${dim(`· ${N} calls`)}`);
@@ -116,7 +120,9 @@ async function main(): Promise<void> {
   });
 
   const callsMs = channel.totalMs - (channel.overheadMs ?? 0);
-  console.log(`  ${dim('avg')} ${cyan(fmt(channel.perCallAvgMs))}  ${dim('·')}  ${dim('calls total')} ${cyan(fmt(callsMs))}`);
+  console.log(
+    `  ${dim('avg')} ${cyan(fmt(channel.perCallAvgMs))}  ${dim('·')}  ${dim('calls total')} ${cyan(fmt(callsMs))}`,
+  );
 
   const be = breakEven(vanilla, channel);
   const speedupTotal = vanilla.totalMs / channel.totalMs;
@@ -125,8 +131,10 @@ async function main(): Promise<void> {
   printTable(vanilla, channel, be, speedupTotal, speedupPerCall);
 
   const output = { vanilla, channel, breakEven: be, speedupTotal, speedupPerCall };
-  writeFileSync('benchmark-results.json', JSON.stringify(output, (_, v) =>
-    typeof v === 'bigint' ? v.toString() : v, 2));
+  writeFileSync(
+    'benchmark-results.json',
+    JSON.stringify(output, (_, v) => (typeof v === 'bigint' ? v.toString() : v), 2),
+  );
   console.log(dim('\n  Results saved to benchmark-results.json'));
 }
 

@@ -16,6 +16,7 @@ pub struct ChannelContract;
 
 #[contractimpl]
 impl ChannelContract {
+    #[allow(clippy::too_many_arguments)]
     pub fn open_channel(
         env: Env,
         agent: Address,

@@ -70,7 +70,14 @@ export function channelPaymentMiddleware(opts: MiddlewareOptions) {
     const agentSig = Buffer.from(payment.agentSig, 'hex');
 
     try {
-      verifyState(channel.agentPublic, agentSig, channelIdBuf, iteration, agentBalance, serverBalance);
+      verifyState(
+        channel.agentPublic,
+        agentSig,
+        channelIdBuf,
+        iteration,
+        agentBalance,
+        serverBalance,
+      );
     } catch {
       res.status(402).json({ error: 'invalid agent signature' });
       return;
@@ -81,7 +88,13 @@ export function channelPaymentMiddleware(opts: MiddlewareOptions) {
     channel.agentLastSig = agentSig;
 
     // Counter-sign
-    const serverSig = signState(opts.serverKeypair, channelIdBuf, iteration, agentBalance, serverBalance);
+    const serverSig = signState(
+      opts.serverKeypair,
+      channelIdBuf,
+      iteration,
+      agentBalance,
+      serverBalance,
+    );
     channel.serverLastSig = serverSig;
 
     // Fire-and-forget keep_alive (no-op for demo; TTL set to 1yr at open)
@@ -100,23 +113,25 @@ export function channelPaymentMiddleware(opts: MiddlewareOptions) {
 
 function sendPaymentRequired(res: Response, opts: MiddlewareOptions): void {
   res.status(402).json({
-    schemes: [{
-      scheme: 'channel',
-      price: String(opts.price),
-      assetContractId: opts.assetContractId,
-      channelParams: {
-        contractId: opts.channelContractId,
-        facilitatorUrl: opts.facilitatorUrl,
-        minDeposit: String(opts.price * 100n),
-        observationWindow: 500,
+    schemes: [
+      {
+        scheme: 'channel',
+        price: String(opts.price),
+        assetContractId: opts.assetContractId,
+        channelParams: {
+          contractId: opts.channelContractId,
+          facilitatorUrl: opts.facilitatorUrl,
+          minDeposit: String(opts.price * 100n),
+          observationWindow: 500,
+        },
       },
-    }],
+    ],
   });
 }
 
 let consecutiveKeepAliveFailures = 0;
 
-async function keepAliveAsync(channelId: string, facilitatorUrl: string): Promise<void> {
+async function keepAliveAsync(channelId: string, _facilitatorUrl: string): Promise<void> {
   try {
     // In a full implementation, POST to facilitator to extend on-chain TTL
     // For demo: no-op — TTL set to 1 year at channel open
@@ -124,7 +139,9 @@ async function keepAliveAsync(channelId: string, facilitatorUrl: string): Promis
   } catch {
     consecutiveKeepAliveFailures++;
     if (consecutiveKeepAliveFailures >= 3) {
-      console.warn(`[x402] keep_alive failed ${consecutiveKeepAliveFailures} times for channel ${channelId}. Channel TTL may expire.`);
+      console.warn(
+        `[x402] keep_alive failed ${consecutiveKeepAliveFailures} times for channel ${channelId}. Channel TTL may expire.`,
+      );
     }
   }
 }

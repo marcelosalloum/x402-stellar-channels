@@ -2,10 +2,7 @@
 
 use ed25519_dalek::{Signer, SigningKey};
 use rand::rngs::OsRng;
-use soroban_sdk::{
-    testutils::Address as _,
-    token, Address, BytesN, Env,
-};
+use soroban_sdk::{testutils::Address as _, token, Address, BytesN, Env};
 use x402_channel::{ChannelContract, ChannelContractClient, ChannelState};
 
 /// Generate an ed25519 keypair and return (signing_key, pubkey_bytes_32).
@@ -36,7 +33,8 @@ fn sign_state(
 }
 
 fn create_token(env: &Env, admin: &Address) -> Address {
-    env.register_stellar_asset_contract_v2(admin.clone()).address()
+    env.register_stellar_asset_contract_v2(admin.clone())
+        .address()
 }
 
 #[test]

@@ -21,11 +21,13 @@ describe.skipIf(SKIP)('Channel x402 E2E (testnet)', () => {
     await client.open();
   }, 60_000);
 
-  afterAll(async () => { await client.close(); }, 60_000);
+  afterAll(async () => {
+    await client.close();
+  }, 60_000);
 
   it('makes 5 successful paid requests', async () => {
     for (let i = 0; i < 5; i++) {
-      const result = await client.get('/data') as { result: string };
+      const result = (await client.get('/data')) as { result: string };
       expect(result).toHaveProperty('result');
     }
   }, 30_000);

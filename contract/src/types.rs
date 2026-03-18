@@ -29,7 +29,7 @@ pub struct Channel {
     pub server_pubkey: BytesN<32>,
     pub asset: Address,
     pub deposit: i128,
-    pub iteration: u64,          // latest agreed iteration (starts at 0)
+    pub iteration: u64, // latest agreed iteration (starts at 0)
     pub agent_balance: i128,
     pub server_balance: i128,
     pub status: ChannelStatus,

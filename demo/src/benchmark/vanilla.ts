@@ -12,9 +12,8 @@ export async function runVanillaBenchmark(
 
   const results: TimedResult[] = [];
   for (let i = 1; i <= calls; i++) {
-    const r = await measure(
-      `Call ${String(i).padStart(2, ' ')}`,
-      () => vanillaPayment(agentKeypair, serverPublic, assetContractId).then(() => {}),
+    const r = await measure(`Call ${String(i).padStart(2, ' ')}`, () =>
+      vanillaPayment(agentKeypair, serverPublic, assetContractId).then(() => {}),
     );
     results.push(r);
     onProgress?.(r, i);

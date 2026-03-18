@@ -47,14 +47,19 @@ export class ChannelClient {
       serverPubkeyHex: serverPkBytes.toString('hex'),
       assetContractId: this.opts.assetContractId,
       deposit: this.opts.deposit,
-      currentState: { channelId, iteration: 0n, agentBalance: this.opts.deposit, serverBalance: 0n },
+      currentState: {
+        channelId,
+        iteration: 0n,
+        agentBalance: this.opts.deposit,
+        serverBalance: 0n,
+      },
     };
 
     // Register channel with API server so it can verify payments
     await fetch(`${this.opts.serverUrl}/channel/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(this.channel, (_, v) => typeof v === 'bigint' ? v.toString() : v),
+      body: JSON.stringify(this.channel, (_, v) => (typeof v === 'bigint' ? v.toString() : v)),
     });
   }
 
@@ -70,7 +75,11 @@ export class ChannelClient {
 
     const channelIdBuf = Buffer.from(this.channel.channelId, 'hex');
     const agentSig = signState(
-      this.opts.agentKeypair, channelIdBuf, newIteration, newAgentBalance, newServerBalance,
+      this.opts.agentKeypair,
+      channelIdBuf,
+      newIteration,
+      newAgentBalance,
+      newServerBalance,
     );
 
     const header: ChannelPaymentHeader = {
@@ -91,7 +100,14 @@ export class ChannelClient {
     if (respHeaderRaw) {
       const parsed = JSON.parse(respHeaderRaw) as ChannelPaymentResponse;
       const serverSig = Buffer.from(parsed.serverSig, 'hex');
-      verifyState(this.opts.serverPublic, serverSig, channelIdBuf, newIteration, newAgentBalance, newServerBalance);
+      verifyState(
+        this.opts.serverPublic,
+        serverSig,
+        channelIdBuf,
+        newIteration,
+        newAgentBalance,
+        newServerBalance,
+      );
       this.channel.serverLastSig = serverSig;
     }
 

@@ -31,7 +31,9 @@ export async function runChannelBenchmark(
   progress?.onOpen?.(openResult);
 
   for (let i = 1; i <= calls; i++) {
-    const r = await measure(`Call ${String(i).padStart(2, ' ')}`, () => client.get('/data').then(() => {}));
+    const r = await measure(`Call ${String(i).padStart(2, ' ')}`, () =>
+      client.get('/data').then(() => {}),
+    );
     results.push(r);
     progress?.onCall?.(r, i);
   }

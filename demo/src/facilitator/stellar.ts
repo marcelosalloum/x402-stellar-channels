@@ -13,8 +13,7 @@ import {
 import type { ChannelState } from '../types.js';
 
 const RPC_URL = process.env.RPC_URL ?? 'https://soroban-testnet.stellar.org';
-const NETWORK_PASSPHRASE =
-  process.env.NETWORK === 'mainnet' ? Networks.PUBLIC : Networks.TESTNET;
+const NETWORK_PASSPHRASE = process.env.NETWORK === 'mainnet' ? Networks.PUBLIC : Networks.TESTNET;
 const server = new StellarRpc.Server(RPC_URL);
 
 async function invokeContract(
@@ -112,10 +111,22 @@ export async function closeChannelOnChain(
 ): Promise<string> {
   const channelIdBytes = Buffer.from(state.channelId, 'hex');
   const stateScVal = xdr.ScVal.scvMap([
-    new xdr.ScMapEntry({ key: xdr.ScVal.scvSymbol('agent_balance'), val: nativeToScVal(state.agentBalance, { type: 'i128' }) }),
-    new xdr.ScMapEntry({ key: xdr.ScVal.scvSymbol('channel_id'), val: xdr.ScVal.scvBytes(channelIdBytes) }),
-    new xdr.ScMapEntry({ key: xdr.ScVal.scvSymbol('iteration'), val: nativeToScVal(state.iteration, { type: 'u64' }) }),
-    new xdr.ScMapEntry({ key: xdr.ScVal.scvSymbol('server_balance'), val: nativeToScVal(state.serverBalance, { type: 'i128' }) }),
+    new xdr.ScMapEntry({
+      key: xdr.ScVal.scvSymbol('agent_balance'),
+      val: nativeToScVal(state.agentBalance, { type: 'i128' }),
+    }),
+    new xdr.ScMapEntry({
+      key: xdr.ScVal.scvSymbol('channel_id'),
+      val: xdr.ScVal.scvBytes(channelIdBytes),
+    }),
+    new xdr.ScMapEntry({
+      key: xdr.ScVal.scvSymbol('iteration'),
+      val: nativeToScVal(state.iteration, { type: 'u64' }),
+    }),
+    new xdr.ScMapEntry({
+      key: xdr.ScVal.scvSymbol('server_balance'),
+      val: nativeToScVal(state.serverBalance, { type: 'i128' }),
+    }),
   ]);
   const args = [
     xdr.ScVal.scvBytes(channelIdBytes),
