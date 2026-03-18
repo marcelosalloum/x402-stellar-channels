@@ -2,7 +2,10 @@ import { Keypair } from '@stellar/stellar-sdk';
 import { vanillaPayment } from '../facilitator/stellar.js';
 import { measure, type BenchmarkResult, type TimedResult } from './timer.js';
 
-export async function runVanillaBenchmark(calls: number): Promise<BenchmarkResult> {
+export async function runVanillaBenchmark(
+  calls: number,
+  onProgress?: (r: TimedResult, index: number) => void,
+): Promise<BenchmarkResult> {
   const agentKeypair = Keypair.fromSecret(process.env.AGENT_SECRET!);
   const serverPublic = process.env.SERVER_PUBLIC!;
   const assetContractId = process.env.TOKEN_CONTRACT_ID!;
@@ -14,7 +17,7 @@ export async function runVanillaBenchmark(calls: number): Promise<BenchmarkResul
       () => vanillaPayment(agentKeypair, serverPublic, assetContractId).then(() => {}),
     );
     results.push(r);
-    if (!r.success) console.error(`  ✗ Call ${i}: ${r.error}`);
+    onProgress?.(r, i);
   }
 
   const totalMs = results.reduce((s, r) => s + r.durationMs, 0);

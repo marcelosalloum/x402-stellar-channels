@@ -13,7 +13,7 @@
     "setup:testnet": "tsx scripts/setup-testnet.ts"
   },
   "dependencies": {
-    "@stellar/stellar-sdk": "^13.0.0",
+    "@stellar/stellar-sdk": "^14.6.1",
     "express": "^4.18.0"
   },
   "devDependencies": {

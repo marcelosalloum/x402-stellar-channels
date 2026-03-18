@@ -2,7 +2,17 @@ import { Keypair } from '@stellar/stellar-sdk';
 import { ChannelClient } from '../client/channel-client.js';
 import { measure, type BenchmarkResult, type TimedResult } from './timer.js';
 
-export async function runChannelBenchmark(calls: number): Promise<BenchmarkResult> {
+export interface ChannelProgress {
+  onOpen?: (r: TimedResult) => void;
+  onCall?: (r: TimedResult, index: number) => void;
+  onBeforeClose?: () => void;
+  onClose?: (r: TimedResult) => void;
+}
+
+export async function runChannelBenchmark(
+  calls: number,
+  progress?: ChannelProgress,
+): Promise<BenchmarkResult> {
   const client = new ChannelClient({
     agentKeypair: Keypair.fromSecret(process.env.AGENT_SECRET!),
     serverPublic: process.env.SERVER_PUBLIC!,
@@ -15,16 +25,22 @@ export async function runChannelBenchmark(calls: number): Promise<BenchmarkResul
   });
 
   const results: TimedResult[] = [];
+
   const openResult = await measure('Channel open', () => client.open());
   results.push(openResult);
+  progress?.onOpen?.(openResult);
 
   for (let i = 1; i <= calls; i++) {
     const r = await measure(`Call ${String(i).padStart(2, ' ')}`, () => client.get('/data').then(() => {}));
     results.push(r);
+    progress?.onCall?.(r, i);
   }
+
+  progress?.onBeforeClose?.();
 
   const closeResult = await measure('Channel close', () => client.close());
   results.push(closeResult);
+  progress?.onClose?.(closeResult);
 
   const callResults = results.filter((r) => r.label.startsWith('Call'));
   const overheadMs = openResult.durationMs + closeResult.durationMs;
